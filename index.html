@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Cultural Borders — Real-Time Global Music Atlas</title>
+  <meta name="description" content="A dynamic real-time geolocated atlas of global music consumption. Discover which artists dominate each territory." />
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ================================================
+       LOADING OVERLAY
+       ================================================ -->
+  <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Loading application">
+    <div class="loader">
+      <div class="loader-graphic">
+        <div class="loader-globe">
+          <div class="loader-ring r1"></div>
+          <div class="loader-ring r2"></div>
+          <div class="loader-ring r3"></div>
+        </div>
+      </div>
+      <h1 class="loader-title">Cultural Borders</h1>
+      <p class="loader-subtitle">Real-Time Global Music Atlas</p>
+      <div class="loader-stages">
+        <div class="loader-stage" id="stage-geo">
+          <div class="stage-dot"></div>
+          <span class="stage-label">Loading map geometry…</span>
+          <div class="stage-bar"><div class="stage-bar-fill" id="bar-geo"></div></div>
+        </div>
+        <div class="loader-stage" id="stage-csv">
+          <div class="stage-dot"></div>
+          <span class="stage-label">Loading music charts…</span>
+          <div class="stage-bar"><div class="stage-bar-fill" id="bar-csv"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================
+       MAP
+       ================================================ -->
+  <div id="map" role="application" aria-label="Interactive global music map"></div>
+
+  <!-- ================================================
+       TITLE CARD
+       ================================================ -->
+  <div class="title-card" aria-hidden="true">
+    <h2 class="title-card__name">Cultural Borders</h2>
+    <p class="title-card__sub">Global Music Atlas</p>
+  </div>
+
+  <!-- ================================================
+       TOOLTIP (desktop hover)
+       ================================================ -->
+  <div id="tooltip" class="tooltip" role="tooltip" aria-hidden="true">
+    <div class="tooltip__territory"></div>
+    <div class="tooltip__row">
+      <span class="tooltip__badge">#1</span>
+      <div class="tooltip__info">
+        <div class="tooltip__track"></div>
+        <div class="tooltip__artist"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================
+       LEGEND (collapsible)
+       ================================================ -->
+  <div id="legend" class="legend" aria-label="Artist color legend" hidden>
+    <button id="legend-btn" class="legend__btn" aria-expanded="false" aria-controls="legend-body">
+      <svg class="legend__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <circle cx="6" cy="6" r="3"/><circle cx="14" cy="6" r="3"/>
+        <circle cx="6" cy="14" r="3"/><circle cx="14" cy="14" r="3"/>
+      </svg>
+      <span>Legend</span>
+      <svg class="legend__chevron" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M4 6l4 4 4-4"/>
+      </svg>
+    </button>
+    <div id="legend-body" class="legend__body" hidden>
+      <p class="legend__heading">Top artists by territory</p>
+      <ul id="legend-list" class="legend__list" role="list"></ul>
+    </div>
+  </div>
+
+  <!-- ================================================
+       INFO PANEL / BOTTOM SHEET
+       ================================================ -->
+  <aside id="panel" class="panel panel--closed" aria-label="Location music charts" aria-hidden="true">
+    <!-- Mobile drag handle -->
+    <div class="panel__handle" aria-hidden="true"></div>
+
+    <header class="panel__header">
+      <div class="panel__title-wrap">
+        <div id="panel-territory" class="panel__territory"></div>
+        <div id="panel-type"      class="panel__type"></div>
+      </div>
+      <button id="panel-close" class="panel__close" aria-label="Close panel">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="panel__section-label">Top Charts</div>
+
+    <div id="panel-tracks" class="panel__tracks" role="list" aria-label="Top tracks"></div>
+  </aside>
+
+  <!-- Mobile backdrop -->
+  <div id="panel-overlay" class="panel-overlay" aria-hidden="true"></div>
+
+  <!-- ================================================
+       FLOATING MINI-PLAYER
+       ================================================ -->
+  <div id="player-widget" class="player-widget" hidden aria-label="Mini music player" role="region">
+
+    <!-- Drag handle (desktop) / tap-to-expand prompt -->
+    <div id="pw-drag-handle" class="pw-handle" aria-hidden="true">
+      <span class="pw-handle__dots">
+        <svg viewBox="0 0 20 6" fill="currentColor" width="20" height="6">
+          <circle cx="3" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="17" cy="3" r="1.5"/>
+          <circle cx="3" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="17" cy="3" r="1.5"/>
+        </svg>
+      </span>
+      <!-- Animated equaliser bars — only visible when playing -->
+      <span class="pw-eq" aria-hidden="true">
+        <span class="pw-eq__bar"></span>
+        <span class="pw-eq__bar"></span>
+        <span class="pw-eq__bar"></span>
+        <span class="pw-eq__bar"></span>
+      </span>
+    </div>
+
+    <!-- Track info header -->
+    <div class="pw-header">
+      <img id="pw-thumb" class="pw-thumb" alt="" hidden />
+      <div class="pw-info">
+        <div id="pw-track-name" class="pw-track-name"></div>
+        <div class="pw-meta">
+          <span id="pw-artist" class="pw-artist"></span>
+          <span id="pw-status" class="pw-status"></span>
+        </div>
+      </div>
+      <div class="pw-actions">
+        <!-- Minimise / expand -->
+        <button id="pw-minimize"
+                class="pw-btn"
+                data-minimized="false"
+                aria-label="Minimise player"
+                title="Minimise">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <polyline points="4 10 8 6 12 10"/>
+          </svg>
+        </button>
+        <!-- Open in YouTube -->
+        <a  id="pw-open-yt"
+            class="pw-btn"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open in YouTube"
+            title="Open in YouTube">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3"/>
+            <path d="M10 2h4m0 0v4m0-4L7 9"/>
+          </svg>
+        </a>
+        <!-- Close -->
+        <button id="pw-close"
+                class="pw-btn pw-btn--close"
+                aria-label="Close player"
+                title="Close player">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- YouTube iframe wrapper — collapses when minimised -->
+    <div id="pw-frame" class="pw-frame">
+      <div id="yt-iframe"></div>
+    </div>
+
+  </div><!-- /#player-widget -->
+
+  <!-- ================================================
+       SCRIPTS
+       ================================================ -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
