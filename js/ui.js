@@ -298,6 +298,9 @@ export function buildLegend(tracksMap, colorMap) {
  * Binds all static UI event listeners.
  */
 export function bindUIEvents() {
+  // Defensive init: keep mobile backdrop hidden until panel opens.
+  $('panel-overlay')?.classList.add('is-hidden');
+
   // Panel close button
   $('panel-close')?.addEventListener('click', _closePanel);
 
