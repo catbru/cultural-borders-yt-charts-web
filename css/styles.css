@@ -306,6 +306,34 @@ a { color: inherit; }
   margin-top: 0.25rem;
 }
 
+.title-card__about-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.45rem;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(17,17,32,0.5);
+  color: var(--clr-text-muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.18s, color 0.18s, border-color 0.18s, background 0.18s;
+  pointer-events: auto;
+}
+
+.title-card__about-link:hover,
+.title-card__about-link:focus-visible {
+  opacity: 1;
+  color: var(--clr-text);
+  border-color: var(--clr-accent);
+  background: rgba(17,17,32,0.85);
+  outline: none;
+}
+
 /* ------------------------------------------------------------
    6. TOOLTIP
    ------------------------------------------------------------ */
