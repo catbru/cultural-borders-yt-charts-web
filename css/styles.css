@@ -330,6 +330,11 @@ a { color: inherit; }
   visibility: hidden;
 }
 
+/* Tooltip is desktop-only; touch devices use the bottom sheet. */
+@media (max-width: 767px) {
+  .tooltip { display: none !important; }
+}
+
 .tooltip__territory {
   font-size: 0.65rem;
   font-weight: 700;

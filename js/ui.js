@@ -301,6 +301,12 @@ export function bindUIEvents() {
   // Defensive init: keep mobile backdrop hidden until panel opens.
   $('panel-overlay')?.classList.add('is-hidden');
 
+  // Defensive init: tooltip must start hidden until first desktop hover.
+  const tooltip = $('tooltip');
+  tooltip?.classList.add('is-hidden');
+  tooltip?.setAttribute('aria-hidden', 'true');
+  tooltipHidden = true;
+
   // Panel close button
   $('panel-close')?.addEventListener('click', _closePanel);
 

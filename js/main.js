@@ -84,7 +84,10 @@ async function main() {
     // Hover → tooltip (desktop); suppressed when panel is open
     onHover(data) {
       // Skip tooltip on mobile (touch devices have no hover)
-      if (window.matchMedia('(hover: none)').matches) return;
+      if (window.matchMedia('(hover: none)').matches) {
+        updateTooltip(null);
+        return;
+      }
       updateTooltip(data);
     },
 
