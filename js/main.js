@@ -30,7 +30,7 @@ import {
 const modeCache = new Map();
 
 let map        = null;
-let activeMode = getModeById('tracks');
+let activeMode = getModeById('discover');
 
 /* ------------------------------------------------------------------
    Boot
@@ -55,7 +55,7 @@ async function main() {
   try {
     [geoJSON, tracksResult] = await Promise.all([
       loadGeoJSON(p => { stageProgress('geo', p); if (p >= 1) stageDone('geo'); }),
-      loadModeData(getModeById('tracks'), p => { stageProgress('csv', p); if (p >= 1) stageDone('csv'); }),
+      loadModeData(getModeById('discover'), p => { stageProgress('csv', p); if (p >= 1) stageDone('csv'); }),
       waitForStyle(map),
     ]);
   } catch (err) {
@@ -63,7 +63,7 @@ async function main() {
     return;
   }
 
-  modeCache.set('tracks', tracksResult);
+  modeCache.set('discover', tracksResult);
 
   addRegionsLayer(map, geoJSON, tracksResult.fillExpression);
 
@@ -105,10 +105,11 @@ async function main() {
   document.getElementById('mode-bar')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-mode]');
     if (!btn) return;
-    const modeId = btn.dataset.mode;
-    if (modeId === 'legend') { toggleLegendSheet(); return; }
-    _setActiveMode(modeId);
+    _setActiveMode(btn.dataset.mode);
   });
+
+  // Mobile legend toggle
+  document.getElementById('legend-toggle-btn')?.addEventListener('click', toggleLegendSheet);
 
   // Phase 2 — background
   _loadBackgroundModes();
@@ -141,7 +142,7 @@ function _setActiveMode(modeId) {
    ------------------------------------------------------------------ */
 
 async function _loadBackgroundModes() {
-  const bg = MODES.filter(m => m.id !== 'tracks');
+  const bg = MODES.filter(m => m.id !== 'discover');
 
   await Promise.allSettled(bg.map(async (mode) => {
     _setTabLoading(mode.id, true);

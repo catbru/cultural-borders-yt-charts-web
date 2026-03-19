@@ -50,10 +50,12 @@
          aria-label="About Cultural Borders" title="About Cultural Borders">About</a>
       <button id="share-btn" class="title-card__share-btn"
               aria-label="Share this map" title="Share">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M8 2v9M5 5l3-3 3 3"/>
-          <path d="M4 10v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3"/>
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="13" cy="2.5" r="1.8"/>
+          <circle cx="3"  cy="8"   r="1.8"/>
+          <circle cx="13" cy="13.5" r="1.8"/>
+          <line x1="4.6" y1="7.1"  x2="11.4" y2="3.4"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="4.6" y1="8.9"  x2="11.4" y2="12.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
         </svg>
       </button>
     </div>
@@ -119,7 +121,7 @@
 
   <!-- MODE BAR (bottom tab navigation) -->
   <nav id="mode-bar" class="mode-bar" aria-label="Visualisation mode">
-    <button class="mode-bar__tab is-active" data-mode="tracks" aria-label="Top Tracks">
+    <button class="mode-bar__tab" data-mode="tracks" aria-label="Top Tracks">
       <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
         <path d="M9 2v8.268A2 2 0 1 1 7 9V5H4V3h5z"/>
       </svg>
@@ -132,7 +134,7 @@
       </svg>
       <span class="mode-bar__label">Artists</span>
     </button>
-    <button class="mode-bar__tab" data-mode="discover" aria-label="Discover">
+    <button class="mode-bar__tab is-active" data-mode="discover" aria-label="Discover">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
            stroke-linecap="round" aria-hidden="true">
         <circle cx="7" cy="7" r="4.5"/>
@@ -148,14 +150,15 @@
       </svg>
       <span class="mode-bar__label">Languages</span>
     </button>
-    <button class="mode-bar__tab" data-mode="legend" aria-label="Show legend">
-      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <circle cx="6" cy="6" r="3"/><circle cx="14" cy="6" r="3"/>
-        <circle cx="6" cy="14" r="3"/><circle cx="14" cy="14" r="3"/>
-      </svg>
-      <span class="mode-bar__label">Legend</span>
-    </button>
   </nav>
+
+  <!-- MOBILE LEGEND TOGGLE (floating, outside mode bar) -->
+  <button id="legend-toggle-btn" class="legend-toggle-btn" aria-label="Show legend">
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="5" r="2.8"/><circle cx="15" cy="5" r="2.8"/>
+      <circle cx="5" cy="15" r="2.8"/><circle cx="15" cy="15" r="2.8"/>
+    </svg>
+  </button>
 
   <!-- TOAST -->
   <div id="toast" class="toast" aria-live="polite"></div>

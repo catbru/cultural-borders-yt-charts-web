@@ -281,29 +281,35 @@ a { color: inherit; }
    ------------------------------------------------------------ */
 .title-card {
   position: fixed;
-  top: 1.25rem;
-  left: 1.25rem;
+  top: 1rem;
+  left: 1rem;
   z-index: var(--z-ui);
   pointer-events: none;
   user-select: none;
+  /* Subtle backdrop so text stays readable over any map colour */
+  background: rgba(9,9,15,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem 0.6rem;
 }
 
 .title-card__name {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--clr-text);
   line-height: 1;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
 }
 
 .title-card__sub {
-  font-size: 0.625rem;
+  font-size: 0.55rem;
   font-weight: 500;
   color: var(--clr-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
 }
 
 .title-card__links {
@@ -1463,3 +1469,37 @@ a { color: inherit; }
 }
 
 .toast--visible { opacity: 1; }
+
+/* ============================================================
+   18. MOBILE LEGEND TOGGLE BUTTON
+   ============================================================ */
+
+.legend-toggle-btn {
+  display: none; /* hidden on desktop */
+  position: fixed;
+  bottom: 68px; /* above mode bar (56px) + 12px gap */
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border-strong);
+  border-radius: 50%;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-ui);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.legend-toggle-btn svg { width: 16px; height: 16px; }
+
+.legend-toggle-btn:hover {
+  color: var(--clr-text);
+  background: var(--clr-surface-hover);
+  border-color: var(--clr-accent);
+}
+
+@media (max-width: 767px) {
+  .legend-toggle-btn { display: flex; }
+}
