@@ -11,10 +11,6 @@ import {
    Initialise the map
    ------------------------------------------------------------------ */
 
-/**
- * Creates and returns a MapLibre Map instance.
- * @returns {maplibregl.Map}
- */
 export function initMap() {
   const map = new maplibregl.Map({
     container: 'map',
@@ -28,24 +24,12 @@ export function initMap() {
     antialias: true,
   });
 
-  // Controls
-  map.addControl(
-    new maplibregl.NavigationControl({ showCompass: false }),
-    'top-right',
-  );
-  map.addControl(
-    new maplibregl.AttributionControl({ compact: true }),
-    'bottom-right',
-  );
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
   return map;
 }
 
-/**
- * Resolves when the map style has finished loading.
- * @param {maplibregl.Map} map
- * @returns {Promise<void>}
- */
 export function waitForStyle(map) {
   return new Promise((resolve, reject) => {
     if (map.isStyleLoaded()) { resolve(); return; }
@@ -58,20 +42,13 @@ export function waitForStyle(map) {
    Add the regions GeoJSON source + layers
    ------------------------------------------------------------------ */
 
-/**
- * @param {maplibregl.Map}  map
- * @param {object}          geoJSON        — parsed GeoJSON FeatureCollection
- * @param {Array}           fillExpression — MapLibre match expression for fill-color
- */
 export function addRegionsLayer(map, geoJSON, fillExpression) {
-  // Source — use promoteId so we can drive feature-state with yt_id strings
   map.addSource('regions', {
     type: 'geojson',
     data: geoJSON,
-    promoteId: 'yt_id',   // promotes yt_id property as the feature ID
+    promoteId: 'yt_id',
   });
 
-  // ── Fill ────────────────────────────────────────────────────────
   map.addLayer({
     id: 'regions-fill',
     type: 'fill',
@@ -80,14 +57,12 @@ export function addRegionsLayer(map, geoJSON, fillExpression) {
       'fill-color': fillExpression,
       'fill-opacity': [
         'interpolate', ['linear'], ['zoom'],
-        1,  // at zoom 1  → slightly more transparent (context overview)
-        ['case',
+        1, ['case',
           ['boolean', ['feature-state', 'selected'], false], 0.88,
           ['boolean', ['feature-state', 'hover'],    false], 0.78,
           0.62,
         ],
-        7,  // at zoom 7+ → more opaque (detailed view)
-        ['case',
+        7, ['case',
           ['boolean', ['feature-state', 'selected'], false], 0.94,
           ['boolean', ['feature-state', 'hover'],    false], 0.86,
           0.72,
@@ -96,7 +71,6 @@ export function addRegionsLayer(map, geoJSON, fillExpression) {
     },
   });
 
-  // ── Borders ─────────────────────────────────────────────────────
   map.addLayer({
     id: 'regions-line',
     type: 'line',
@@ -111,18 +85,26 @@ export function addRegionsLayer(map, geoJSON, fillExpression) {
       'line-width': [
         'interpolate', ['linear'], ['zoom'],
         2, ['case',
-              ['boolean', ['feature-state', 'selected'], false], 1.5,
-              ['boolean', ['feature-state', 'hover'],    false], 0.8,
-              0.3,
-            ],
+          ['boolean', ['feature-state', 'selected'], false], 1.5,
+          ['boolean', ['feature-state', 'hover'],    false], 0.8,
+          0.3,
+        ],
         8, ['case',
-              ['boolean', ['feature-state', 'selected'], false], 2.5,
-              ['boolean', ['feature-state', 'hover'],    false], 1.5,
-              0.6,
-            ],
+          ['boolean', ['feature-state', 'selected'], false], 2.5,
+          ['boolean', ['feature-state', 'hover'],    false], 1.5,
+          0.6,
+        ],
       ],
     },
   });
+}
+
+/* ------------------------------------------------------------------
+   Swap fill-color without rebuilding the layer
+   ------------------------------------------------------------------ */
+
+export function updateFillColor(map, fillExpression) {
+  map.setPaintProperty('regions-fill', 'fill-color', fillExpression);
 }
 
 /* ------------------------------------------------------------------
@@ -131,12 +113,13 @@ export function addRegionsLayer(map, geoJSON, fillExpression) {
 
 /**
  * @param {maplibregl.Map} map
- * @param {Map<string, Object[]>} tracksMap  — location_id → sorted tracks
+ * @param {function(string): Object[]} getActiveData
+ *   Called with locationId at event time; returns rows for the current mode.
  * @param {{ onHover, onSelect }} handlers
- *   onHover(null | { point, name, rank, top }) — called on mousemove / leave
- *   onSelect(null | { name, rank, tracks })    — called on click / deselect
+ *   onHover(null | { point, name, hierarchyRank, rows })
+ *   onSelect(null | { locationId, name, hierarchyRank })
  */
-export function bindInteractions(map, tracksMap, { onHover, onSelect }) {
+export function bindInteractions(map, getActiveData, { onHover, onSelect }) {
   let hoveredId  = null;
   let selectedId = null;
 
@@ -145,11 +128,9 @@ export function bindInteractions(map, tracksMap, { onHover, onSelect }) {
     map.setFeatureState({ source: 'regions', id }, state);
   };
 
-  /* ---- HOVER ---------------------------------------------------- */
   map.on('mousemove', 'regions-fill', (e) => {
     const f = e.features?.[0];
     if (!f) return;
-
     const id = f.properties.yt_id;
 
     if (hoveredId !== id) {
@@ -157,59 +138,43 @@ export function bindInteractions(map, tracksMap, { onHover, onSelect }) {
       hoveredId = id;
       setState(id, { hover: true });
     }
-
     map.getCanvas().style.cursor = 'pointer';
 
-    const tracks = tracksMap.get(id) ?? [];
     onHover({
-      point: e.point,
-      name:  f.properties.yt_name,
-      rank:  f.properties.hierarchy_rank,
-      top:   tracks[0] ?? null,
+      point:         e.point,
+      name:          f.properties.yt_name,
+      hierarchyRank: f.properties.hierarchy_rank,
+      rows:          getActiveData(id),
     });
   });
 
   map.on('mouseleave', 'regions-fill', () => {
     map.getCanvas().style.cursor = '';
-    if (hoveredId !== null) {
-      setState(hoveredId, { hover: false });
-      hoveredId = null;
-    }
+    if (hoveredId !== null) { setState(hoveredId, { hover: false }); hoveredId = null; }
     onHover(null);
   });
 
-  /* ---- CLICK (region) ------------------------------------------- */
   map.on('click', 'regions-fill', (e) => {
     const f = e.features?.[0];
     if (!f) return;
-
     const id = f.properties.yt_id;
 
-    if (selectedId !== null && selectedId !== id) {
-      setState(selectedId, { selected: false });
-    }
+    if (selectedId !== null && selectedId !== id) setState(selectedId, { selected: false });
     selectedId = id;
     setState(id, { selected: true });
 
-    const tracks = tracksMap.get(id) ?? [];
     onSelect({
-      name:   f.properties.yt_name,
-      rank:   f.properties.hierarchy_rank,
-      tracks,
+      locationId:    id,
+      name:          f.properties.yt_name,
+      hierarchyRank: f.properties.hierarchy_rank,
     });
-
-    // Prevent the canvas-level handler below from deselecting immediately
     e._regionHandled = true;
   });
 
-  /* ---- CLICK (empty canvas) — deselect ------------------------- */
   map.on('click', (e) => {
-    if (e._regionHandled) return;  // already handled above
-
-    // Double-check: did the click land on any region?
+    if (e._regionHandled) return;
     const hits = map.queryRenderedFeatures(e.point, { layers: ['regions-fill'] });
     if (hits.length > 0) return;
-
     if (selectedId !== null) {
       setState(selectedId, { selected: false });
       selectedId = null;
@@ -219,19 +184,10 @@ export function bindInteractions(map, tracksMap, { onHover, onSelect }) {
 }
 
 /* ------------------------------------------------------------------
-   Map padding helper — shift center away from open panel
+   Map padding helper
    ------------------------------------------------------------------ */
 
-/**
- * Adjusts map padding to account for the side panel on desktop.
- * @param {maplibregl.Map} map
- * @param {boolean} open
- * @param {number}  [panelWidth=400]
- */
 export function setMapPadding(map, open, panelWidth = 400) {
-  if (window.innerWidth < 768) return; // no padding needed on mobile
-  map.easeTo({
-    padding: { right: open ? panelWidth : 0 },
-    duration: 320,
-  });
+  if (window.innerWidth < 768) return;
+  map.easeTo({ padding: { right: open ? panelWidth : 0 }, duration: 320 });
 }

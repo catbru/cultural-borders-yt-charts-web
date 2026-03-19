@@ -306,11 +306,18 @@ a { color: inherit; }
   margin-top: 0.25rem;
 }
 
+.title-card__links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+  pointer-events: auto;
+}
+
 .title-card__about-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 0.45rem;
   padding: 0.18rem 0.42rem;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.14);
@@ -333,6 +340,21 @@ a { color: inherit; }
   background: rgba(17,17,32,0.85);
   outline: none;
 }
+
+.title-card__share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--clr-text-muted);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.18s, color 0.18s;
+  pointer-events: auto;
+}
+.title-card__share-btn:hover { opacity: 1; color: var(--clr-text); }
+.title-card__share-btn svg  { width: 14px; height: 14px; }
 
 /* ------------------------------------------------------------
    6. TOOLTIP
@@ -654,20 +676,32 @@ a { color: inherit; }
   flex-shrink: 0;
 }
 
-/* Track list container */
-.panel__tracks {
+/* Panel body — the main scrolling container */
+.panel__body {
   overflow-y: auto;
   flex: 1;
-  padding-bottom: 1rem;
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
   scrollbar-width: thin;
   scrollbar-color: var(--clr-border) transparent;
 }
 
-.panel__tracks::-webkit-scrollbar { width: 4px; }
-.panel__tracks::-webkit-scrollbar-track { background: transparent; }
-.panel__tracks::-webkit-scrollbar-thumb {
+.panel__body::-webkit-scrollbar { width: 4px; }
+.panel__body::-webkit-scrollbar-track { background: transparent; }
+.panel__body::-webkit-scrollbar-thumb {
   background: var(--clr-border);
   border-radius: 2px;
+}
+
+/* Updated date line */
+.panel__updated {
+  font-size: 0.68rem;
+  color: var(--clr-text-faint);
+  padding: 0.35rem 1.25rem 0;
+}
+
+/* Track list (inner, no scroll — panel__body handles it) */
+.panel__tracks {
+  padding-bottom: 1rem;
 }
 
 /* Empty state */
@@ -900,8 +934,8 @@ a { color: inherit; }
   display: flex;
   flex-direction: column;
 
-  /* Default position: bottom-right corner (above map attribution) */
-  bottom: 3.5rem;
+  /* Default position: bottom-right, above mode bar on mobile */
+  bottom: calc(3.5rem + 56px);
   right: 1rem;
   width: 320px;
 
@@ -938,15 +972,22 @@ a { color: inherit; }
   pointer-events: none;
 }
 
-/* ── Mobile: full-width bar at bottom ────────────────────── */
+/* ── Mobile: full-width bar above mode bar ───────────────── */
 @media (max-width: 767px) {
   .player-widget {
-    bottom: 0;
+    bottom: 56px; /* sits on top of the mode bar */
     right: 0;
     left: 0;
     width: 100%;
     border-radius: var(--panel-radius) var(--panel-radius) 0 0;
     border-bottom: none;
+  }
+}
+
+/* ── Desktop: restore original bottom offset ─────────────── */
+@media (min-width: 768px) {
+  .player-widget {
+    bottom: 3.5rem;
   }
 }
 
@@ -1140,3 +1181,285 @@ a { color: inherit; }
   opacity: 0;
   pointer-events: none;
 }
+
+/* ============================================================
+   13. MODE BAR (bottom tab navigation)
+   ============================================================ */
+
+.mode-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: stretch;
+  background: color-mix(in srgb, var(--clr-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--clr-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: var(--z-ui);
+}
+
+@media (min-width: 768px) {
+  .mode-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 420px;
+    bottom: 24px;
+    height: 48px;
+    border-radius: 28px;
+    border: 1px solid var(--clr-border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    padding-bottom: 0;
+  }
+  /* Hide legend tab on desktop — it has the floating overlay */
+  .mode-bar__tab[data-mode="legend"] { display: none; }
+}
+
+.mode-bar__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--clr-text-muted);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  transition: color var(--dur-fade);
+  padding: 6px 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-bar__tab svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.mode-bar__tab.is-active { color: var(--clr-accent); }
+
+.mode-bar__tab.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--clr-accent);
+  border-radius: 0 0 2px 2px;
+}
+
+/* Loading badge — pulsing dot while CSV loads */
+.mode-bar__tab.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: calc(50% - 12px);
+  width: 6px;
+  height: 6px;
+  background: var(--clr-accent);
+  border-radius: 50%;
+  animation: pulse-badge 1s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.6); }
+}
+
+/* ============================================================
+   14. LANGUAGE BREAKDOWN PANEL
+   ============================================================ */
+
+.lang-list {
+  padding: 0.5rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lang-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 34px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lang-item__name {
+  font-size: 0.78rem;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lang-item__bar-wrap {
+  height: 5px;
+  background: var(--clr-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.lang-item__bar {
+  height: 100%;
+  background: var(--clr-accent);
+  border-radius: 3px;
+  transition: width 0.4s var(--ease-out);
+  min-width: 2px;
+}
+
+.lang-item__pct {
+  font-size: 0.68rem;
+  color: var(--clr-text-muted);
+  text-align: right;
+}
+
+.lang-footer {
+  font-size: 0.65rem;
+  color: var(--clr-text-faint);
+  padding: 0.75rem 1rem 1rem;
+}
+
+/* ============================================================
+   15. DISCOVER CARD
+   ============================================================ */
+
+.discover-card {
+  margin: 0.75rem 1rem;
+  padding: 1rem;
+  background: var(--clr-surface-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.discover-card__info { flex: 1; min-width: 0; }
+
+.discover-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-card__artist {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  margin-top: 0.2rem;
+}
+
+.discover-card__badge {
+  display: inline-block;
+  margin-top: 0.6rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--clr-accent-glow);
+  color: var(--clr-accent);
+  font-size: 0.65rem;
+  border-radius: 20px;
+  border: 1px solid rgba(107,107,255,0.3);
+  line-height: 1.4;
+}
+
+.discover-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.discover-card__play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--clr-accent);
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.discover-card__play:hover { transform: scale(1.08); background: #8080ff; }
+.discover-card__play svg { width: 16px; height: 16px; }
+
+/* ============================================================
+   16. MOBILE LEGEND SHEET
+   ============================================================ */
+
+.legend-sheet {
+  position: fixed;
+  bottom: 56px; /* above mode bar */
+  left: 0;
+  right: 0;
+  max-height: 55vh;
+  background: var(--clr-surface);
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  border-top: 1px solid var(--clr-border-strong);
+  padding: 0.5rem 1.25rem 1rem;
+  z-index: var(--z-panel);
+  transform: translateY(110%);
+  transition: transform var(--dur-panel) var(--ease-out);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.legend-sheet--open { transform: translateY(0); }
+
+.legend-sheet__handle {
+  width: 36px;
+  height: 4px;
+  background: var(--clr-border-strong);
+  border-radius: 2px;
+  margin: 0 auto 0.75rem;
+}
+
+.legend-sheet__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.legend-sheet__list { padding-bottom: 0.5rem; }
+
+/* Hide desktop legend on mobile */
+@media (max-width: 767px) {
+  #legend { display: none; }
+}
+
+/* ============================================================
+   17. TOAST
+   ============================================================ */
+
+.toast {
+  position: fixed;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border-strong);
+  border-radius: 20px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  z-index: var(--z-tooltip);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fade);
+  white-space: nowrap;
+}
+
+.toast--visible { opacity: 1; }

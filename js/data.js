@@ -1,54 +1,30 @@
 /**
- * data.js — Asynchronous loading and cross-referencing of
- * combined_map.geojson + charts_tracks.csv
+ * data.js — Generic data loading for all visualisation modes.
  *
  * Public API:
- *   loadAllData(callbacks) → { geoJSON, tracksMap, colorMap, fillExpression }
+ *   loadGeoJSON(onProgress?)    → GeoJSON FeatureCollection
+ *   loadModeData(mode, onProgress?) → { dataMap, colorMap, fillExpression, legendItems }
  */
 
-import { GEOJSON_PATH, CSV_PATH, PALETTE, NO_DATA_COLOR } from './config.js';
-
-/* ------------------------------------------------------------------
-   Public entry point
-   ------------------------------------------------------------------ */
-
-/**
- * @param {{ onGeoProgress, onCsvProgress }} [cbs] - optional progress callbacks (0–1)
- * @returns {Promise<{ geoJSON, tracksMap, colorMap, fillExpression }>}
- */
-export async function loadAllData(cbs = {}) {
-  const { onGeoProgress, onCsvProgress } = cbs;
-
-  // Kick off both downloads in parallel
-  const [geoJSON, tracksMap] = await Promise.all([
-    fetchGeoJSON(onGeoProgress),
-    fetchAndParseCSV(onCsvProgress),
-  ]);
-
-  const { colorMap, fillExpression } = buildColorData(tracksMap);
-
-  return { geoJSON, tracksMap, colorMap, fillExpression };
-}
+import { GEOJSON_PATH, NO_DATA_COLOR } from './config.js';
 
 /* ------------------------------------------------------------------
    GeoJSON — streaming fetch with byte progress
    ------------------------------------------------------------------ */
 
-async function fetchGeoJSON(onProgress) {
+export async function loadGeoJSON(onProgress) {
   const res = await fetch(GEOJSON_PATH);
   if (!res.ok) throw new Error(`GeoJSON fetch failed (HTTP ${res.status})`);
 
   const total = Number(res.headers.get('content-length')) || 0;
 
   if (!res.body || total === 0) {
-    // Fallback: no streaming support or unknown length
     onProgress?.(0.5);
     const data = await res.json();
     onProgress?.(1);
     return data;
   }
 
-  // Stream + track progress
   const reader = res.body.getReader();
   const chunks = [];
   let received = 0;
@@ -60,47 +36,146 @@ async function fetchGeoJSON(onProgress) {
     received += value.length;
     onProgress?.(received / total);
   }
-
   onProgress?.(1);
 
-  // Assemble into single buffer, decode once
   const combined = new Uint8Array(received);
   let offset = 0;
   for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.length; }
-
   return JSON.parse(new TextDecoder().decode(combined));
 }
 
 /* ------------------------------------------------------------------
-   CSV — PapaParse (streaming download) + progress via fetch pre-pass
+   Mode data — download CSV, parse, build dataMap + color data
    ------------------------------------------------------------------ */
 
-async function fetchAndParseCSV(onProgress) {
-  // Phase 1: download as text (so we can track progress)
-  const text = await downloadTextWithProgress(CSV_PATH, p => onProgress?.(p * 0.6));
-
-  // Phase 2: parse (PapaParse is synchronous for string input — fast enough
-  //           for ~30 MB; consider worker:true for very slow devices)
-  onProgress?.(0.65);
+/**
+ * Load and process CSV data for a given mode.
+ * @param {Object}   mode        — mode object from modes.js
+ * @param {Function} [onProgress] — called with 0–1
+ * @returns {{ dataMap, colorMap, fillExpression, legendItems }}
+ */
+export async function loadModeData(mode, onProgress) {
+  const text = await _downloadTextWithProgress(mode.csvPath, p => onProgress?.(p * 0.7));
+  onProgress?.(0.75);
 
   return new Promise((resolve, reject) => {
     Papa.parse(text, {
       header: true,
-      dynamicTyping: false,  // keep everything as strings to avoid float coercion
+      dynamicTyping: false,
       skipEmptyLines: true,
-      worker: false,         // synchronous is fine; change to true on slow targets
+      worker: false,
       complete({ data }) {
         onProgress?.(1);
-        resolve(buildTracksMap(data));
+        const dataMap  = _buildDataMap(data, mode);
+        const colorData = _buildColorData(dataMap, mode);
+        resolve({ dataMap, ...colorData });
       },
       error: reject,
     });
   });
 }
 
-async function downloadTextWithProgress(url, onProgress) {
+/* ------------------------------------------------------------------
+   Build location → rows dictionary
+   ------------------------------------------------------------------ */
+
+function _buildDataMap(rows, mode) {
+  const map = new Map();
+
+  for (const row of rows) {
+    const id = row.location_id?.trim();
+    if (!id) continue;
+    if (!map.has(id)) map.set(id, []);
+
+    // Discover: synthesise encrypted_video_id from youtube_url
+    // so that player.js (which uses encrypted_video_id) works unchanged.
+    if (mode.id === 'discover' && row.youtube_url && !row.encrypted_video_id) {
+      try {
+        row.encrypted_video_id = new URL(row.youtube_url).searchParams.get('v') || '';
+      } catch (_) {
+        row.encrypted_video_id = '';
+      }
+    }
+
+    map.get(id).push(row);
+  }
+
+  // Sort each location's rows
+  for (const [, rows] of map) {
+    if (mode.id === 'languages') {
+      rows.sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
+    } else {
+      rows.sort((a, b) => Number(a.rank ?? a.selected_rank) - Number(b.rank ?? b.selected_rank));
+    }
+  }
+
+  return map;
+}
+
+/* ------------------------------------------------------------------
+   Color system — frequency-ranked unique assignment with golden-angle HSL
+   ------------------------------------------------------------------ */
+
+function _generatePalette(n = 200) {
+  const colors = [];
+  for (let i = 0; i < n; i++) {
+    const hue        = (i * 137.508) % 360;
+    const lightness  = i % 2 === 0 ? 58 : 68;
+    const saturation = Math.floor(i / 2) % 2 === 0 ? 75 : 85;
+    colors.push(`hsl(${hue.toFixed(1)},${saturation}%,${lightness}%)`);
+  }
+  return colors;
+}
+
+function _hashIndex(str, max) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
+  return Math.abs(h) % max;
+}
+
+function _buildColorData(dataMap, mode) {
+  // Count territory dominance per colour key
+  const keyCounts = new Map();
+  for (const rows of dataMap.values()) {
+    const key = mode.getColorKey(rows);
+    if (key) keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
+  }
+
+  const sortedKeys  = [...keyCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const PALETTE_SIZE = 200;
+  const palette     = _generatePalette(PALETTE_SIZE);
+
+  const colorMap = new Map();
+  sortedKeys.forEach(([key], i) => {
+    colorMap.set(key, i < PALETTE_SIZE ? palette[i] : palette[_hashIndex(key, PALETTE_SIZE)]);
+  });
+
+  // MapLibre match expression
+  const expr = ['match', ['get', 'yt_id']];
+  for (const [locationId, rows] of dataMap) {
+    const key   = mode.getColorKey(rows);
+    const color = key ? (colorMap.get(key) ?? NO_DATA_COLOR) : NO_DATA_COLOR;
+    expr.push(locationId, color);
+  }
+  expr.push(NO_DATA_COLOR);
+
+  // Top 15 legend items
+  const legendItems = sortedKeys.slice(0, 15).map(([label, count]) => ({
+    label,
+    color: colorMap.get(label) ?? NO_DATA_COLOR,
+    count,
+  }));
+
+  return { colorMap, fillExpression: expr, legendItems };
+}
+
+/* ------------------------------------------------------------------
+   Download helper
+   ------------------------------------------------------------------ */
+
+async function _downloadTextWithProgress(url, onProgress) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`CSV fetch failed (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(`CSV fetch failed: ${url} (HTTP ${res.status})`);
 
   const total = Number(res.headers.get('content-length')) || 0;
 
@@ -122,119 +197,10 @@ async function downloadTextWithProgress(url, onProgress) {
     received += value.length;
     onProgress?.(received / total);
   }
-
   onProgress?.(1);
 
   const full = new Uint8Array(received);
   let off = 0;
   for (const p of parts) { full.set(p, off); off += p.length; }
-
   return new TextDecoder().decode(full);
-}
-
-/* ------------------------------------------------------------------
-   Build location → tracks dictionary
-   ------------------------------------------------------------------ */
-
-/**
- * Groups and sorts rows by location_id.
- * @param {Object[]} rows  — parsed CSV rows
- * @returns {Map<string, Object[]>}  location_id → tracks sorted by rank
- */
-function buildTracksMap(rows) {
-  const map = new Map();
-
-  for (const row of rows) {
-    const id = row.location_id?.trim();
-    if (!id) continue;
-
-    if (!map.has(id)) map.set(id, []);
-    map.get(id).push(row);
-  }
-
-  for (const tracks of map.values()) {
-    tracks.sort((a, b) => Number(a.rank) - Number(b.rank));
-  }
-
-  return map;
-}
-
-/* ------------------------------------------------------------------
-   Build artist colours + MapLibre fill-color expression
-   ------------------------------------------------------------------ */
-
-/**
- * Deterministic hash of a string → palette index.
- * Same artist name will always produce the same colour.
- */
-function hashArtistColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = Math.imul(31, h) + name.charCodeAt(i) | 0;
-  }
-  return PALETTE[Math.abs(h) % PALETTE.length];
-}
-
-/**
- * Builds:
- *   colorMap   — Map<artistName, hexColor>  (for the legend)
- *   fillExpression — MapLibre GL match expression for fill-color
- *
- * The match expression maps each yt_id to the colour of its #1 artist.
- */
-function buildColorData(tracksMap) {
-  const colorMap = new Map();  // artist → colour (deduped)
-
-  // ['match', ['get', 'yt_id'], id1, clr1, id2, clr2, …, default]
-  const expr = ['match', ['get', 'yt_id']];
-
-  for (const [locationId, tracks] of tracksMap) {
-    // tracks are already sorted by rank; tracks[0] is rank 1
-    const top = tracks[0];
-    if (!top) continue;
-
-    const artist = top.artist_names?.trim() || '';
-    const color  = artist ? hashArtistColor(artist) : NO_DATA_COLOR;
-
-    if (artist && !colorMap.has(artist)) {
-      colorMap.set(artist, color);
-    }
-
-    // The match expression expects alternating [id, value] pairs
-    expr.push(locationId, color);
-  }
-
-  expr.push(NO_DATA_COLOR);  // default fallback
-
-  return { colorMap, fillExpression: expr };
-}
-
-/* ------------------------------------------------------------------
-   Helper — build a summary of top artists by territory count
-   (used for the legend)
-   ------------------------------------------------------------------ */
-
-/**
- * @param {Map<string, Object[]>} tracksMap
- * @param {Map<string, string>}   colorMap
- * @param {number} [limit=15]
- * @returns {{ artist: string, color: string, count: number }[]}
- */
-export function getTopArtistsSummary(tracksMap, colorMap, limit = 15) {
-  const counts = new Map();  // artist → territory count
-
-  for (const tracks of tracksMap.values()) {
-    const artist = tracks[0]?.artist_names?.trim() || '';
-    if (!artist) continue;
-    counts.set(artist, (counts.get(artist) || 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([artist, count]) => ({
-      artist,
-      color: colorMap.get(artist) || NO_DATA_COLOR,
-      count,
-    }));
 }

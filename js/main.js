@@ -1,135 +1,179 @@
 /**
- * main.js — Application entry point
+ * main.js — Application entry point.
  *
- * Orchestrates:
- *   1. Loading overlay feedback
- *   2. Parallel fetch of GeoJSON + CSV
- *   3. MapLibre style boot
- *   4. Layer and interaction setup
- *   5. Legend build
+ * Phase 1 (blocking): GeoJSON + tracks CSV + map style.
+ * Phase 2 (background): artists, discover, languages CSVs.
  */
 
-import { loadAllData }      from './data.js';
-import { initMap, waitForStyle, addRegionsLayer, bindInteractions, setMapPadding } from './map.js';
+import { loadGeoJSON, loadModeData }  from './data.js';
+import { MODES, getModeById }         from './modes.js';
 import {
-  stageActive, stageDone, stageProgress,
-  hideLoader,
-  updateTooltip,
-  openPanel, closePanel,
-  onPanelToggle,
-  buildLegend,
-  bindUIEvents,
-  setPlayCallback,
-  markTrackActive,
+  initMap, waitForStyle, addRegionsLayer,
+  bindInteractions, updateFillColor, setMapPadding,
+} from './map.js';
+import {
+  stageActive, stageDone, stageProgress, hideLoader,
+  updateTooltip, openPanel, closePanel, onPanelToggle,
+  buildLegend, bindUIEvents, setPlayCallback, markTrackActive,
+  toggleLegendSheet,
 } from './ui.js';
 import {
-  initPlayer,
-  playTrack,
-  hidePlayerForPanel,
-  restorePlayerAfterPanel,
+  initPlayer, playTrack,
+  hidePlayerForPanel, restorePlayerAfterPanel,
 } from './player.js';
+
+/* ------------------------------------------------------------------
+   Module state
+   ------------------------------------------------------------------ */
+
+/** modeId → { dataMap, colorMap, fillExpression, legendItems } */
+const modeCache = new Map();
+
+let map        = null;
+let activeMode = getModeById('tracks');
 
 /* ------------------------------------------------------------------
    Boot
    ------------------------------------------------------------------ */
 
 async function main() {
-  // ── Static UI events (close button, escape key, legend toggle) ──
   bindUIEvents();
-
-  // ── Initialise the floating YouTube player (loads API in background) ──
   initPlayer();
 
-  // ── Wire track-click → player ────────────────────────────────
   setPlayCallback((track) => {
     playTrack(track);
-    markTrackActive(Number(track.rank));
+    markTrackActive(Number(track.rank ?? track.selected_rank));
   });
 
-  // ── Activate loading stage indicators ───────────────────────────
   stageActive('geo');
   stageActive('csv');
 
-  // ── Start the map (style fetch runs in parallel with data) ───────
-  const map = initMap();
+  map = initMap();
 
-  // ── Kick off both data loads and map style in parallel ──────────
-  let dataResult;
+  // Phase 1 — blocking
+  let geoJSON, tracksResult;
   try {
-    [dataResult] = await Promise.all([
-      loadAllData({
-        onGeoProgress(p) {
-          stageProgress('geo', p);
-          if (p >= 1) stageDone('geo');
-        },
-        onCsvProgress(p) {
-          stageProgress('csv', p);
-          if (p >= 1) stageDone('csv');
-        },
-      }),
+    [geoJSON, tracksResult] = await Promise.all([
+      loadGeoJSON(p => { stageProgress('geo', p); if (p >= 1) stageDone('geo'); }),
+      loadModeData(getModeById('tracks'), p => { stageProgress('csv', p); if (p >= 1) stageDone('csv'); }),
       waitForStyle(map),
     ]);
   } catch (err) {
-    showFatalError(err);
+    _showFatalError(err);
     return;
   }
 
-  const { geoJSON, tracksMap, colorMap, fillExpression } = dataResult;
+  modeCache.set('tracks', tracksResult);
 
-  // ── Add region layers ────────────────────────────────────────────
-  addRegionsLayer(map, geoJSON, fillExpression);
+  addRegionsLayer(map, geoJSON, tracksResult.fillExpression);
 
-  // ── Wire map interactions ────────────────────────────────────────
-  bindInteractions(map, tracksMap, {
-    // Hover → tooltip (desktop); suppressed when panel is open
+  // Callback that always returns data for the current active mode
+  const getActiveData = (locationId) =>
+    modeCache.get(activeMode.id)?.dataMap.get(locationId) ?? [];
+
+  bindInteractions(map, getActiveData, {
     onHover(data) {
-      // Skip tooltip on mobile (touch devices have no hover)
-      if (window.matchMedia('(hover: none)').matches) {
-        updateTooltip(null);
-        return;
-      }
-      updateTooltip(data);
+      if (window.matchMedia('(hover: none)').matches) { updateTooltip(null); return; }
+      if (!data) { updateTooltip(null); return; }
+      const subtitle = activeMode.getTooltipSubtitle(data.rows);
+      updateTooltip({ point: data.point, name: data.name, subtitle });
     },
 
-    // Click → info panel
     onSelect(data) {
-      if (!data) {
-        closePanel();
-        return;
-      }
-      // Hide tooltip while panel is visible
+      if (!data) { closePanel(); return; }
       updateTooltip(null);
-      openPanel(data);
+      const rows      = getActiveData(data.locationId);
+      const fetchedAt = rows[0]?.fetched_at ?? null;
+      const meta      = { name: data.name, hierarchyRank: data.hierarchyRank, fetchedAt };
+      const handled   = activeMode.onSelect(rows, meta, { playTrack });
+      if (!handled) openPanel({ rows, meta }, activeMode);
     },
   });
 
-  // ── Adjust map padding + player visibility on panel toggle ──────
   onPanelToggle((isOpen) => {
     setMapPadding(map, isOpen, 400);
-    // On mobile: slide the player out of view while the bottom sheet is up
     if (window.innerWidth < 768) {
       if (isOpen) hidePlayerForPanel();
       else        restorePlayerAfterPanel();
     }
   });
 
-  // ── Build legend ─────────────────────────────────────────────────
-  buildLegend(tracksMap, colorMap);
-
-  // ── Remove loading overlay ───────────────────────────────────────
+  buildLegend(tracksResult.legendItems);
   hideLoader();
+
+  // Mode bar
+  document.getElementById('mode-bar')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    const modeId = btn.dataset.mode;
+    if (modeId === 'legend') { toggleLegendSheet(); return; }
+    _setActiveMode(modeId);
+  });
+
+  // Phase 2 — background
+  _loadBackgroundModes();
+}
+
+/* ------------------------------------------------------------------
+   Mode switching
+   ------------------------------------------------------------------ */
+
+function _setActiveMode(modeId) {
+  const mode = getModeById(modeId);
+  if (!mode || mode === activeMode) return;
+
+  document.querySelectorAll('.mode-bar__tab').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.mode === modeId);
+  });
+
+  activeMode = mode;
+  closePanel();
+
+  const cached = modeCache.get(modeId);
+  if (!cached) return; // still loading — will apply when Phase 2 finishes
+
+  updateFillColor(map, cached.fillExpression);
+  buildLegend(cached.legendItems);
+}
+
+/* ------------------------------------------------------------------
+   Phase 2 — background CSV loading
+   ------------------------------------------------------------------ */
+
+async function _loadBackgroundModes() {
+  const bg = MODES.filter(m => m.id !== 'tracks');
+
+  await Promise.allSettled(bg.map(async (mode) => {
+    _setTabLoading(mode.id, true);
+    try {
+      const result = await loadModeData(mode);
+      modeCache.set(mode.id, result);
+      _setTabLoading(mode.id, false);
+      // If the user already switched to this mode while it was loading, apply now
+      if (activeMode.id === mode.id) {
+        updateFillColor(map, result.fillExpression);
+        buildLegend(result.legendItems);
+      }
+    } catch (err) {
+      console.warn(`[CulturalBorders] Failed to load mode "${mode.id}":`, err);
+      _setTabLoading(mode.id, false);
+    }
+  }));
+}
+
+function _setTabLoading(modeId, loading) {
+  document.querySelector(`.mode-bar__tab[data-mode="${modeId}"]`)
+    ?.classList.toggle('is-loading', loading);
 }
 
 /* ------------------------------------------------------------------
    Fatal error fallback
    ------------------------------------------------------------------ */
 
-function showFatalError(err) {
+function _showFatalError(err) {
   console.error('[CulturalBorders] Fatal init error:', err);
-
   const overlay = document.getElementById('loading-overlay');
   if (!overlay) return;
-
   overlay.innerHTML = `
     <div class="loader" style="gap:1rem">
       <svg viewBox="0 0 24 24" fill="none" stroke="#ff5b5b" stroke-width="1.5"
@@ -153,7 +197,4 @@ function showFatalError(err) {
     </div>`;
 }
 
-/* ------------------------------------------------------------------
-   Run
-   ------------------------------------------------------------------ */
 main();

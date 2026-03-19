@@ -6,17 +6,12 @@
   <title>Cultural Borders — Real-Time Global Music Atlas</title>
   <meta name="description" content="A dynamic real-time geolocated atlas of global music consumption. Discover which artists dominate each territory." />
 
-  <!-- MapLibre GL JS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
-
-  <!-- App Styles -->
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
-  <!-- ================================================
-       LOADING OVERLAY
-       ================================================ -->
+  <!-- LOADING OVERLAY -->
   <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Loading application">
     <div class="loader">
       <div class="loader-graphic">
@@ -43,26 +38,28 @@
     </div>
   </div>
 
-  <!-- ================================================
-       MAP
-       ================================================ -->
+  <!-- MAP -->
   <div id="map" role="application" aria-label="Interactive global music map"></div>
 
-  <!-- ================================================
-       TITLE CARD
-       ================================================ -->
+  <!-- TITLE CARD -->
   <div class="title-card">
     <h2 class="title-card__name">Cultural Borders</h2>
     <p class="title-card__sub">Global Music Atlas</p>
-    <a class="title-card__about-link"
-       href="about.html"
-       aria-label="About Cultural Borders"
-       title="About Cultural Borders">About</a>
+    <div class="title-card__links">
+      <a class="title-card__about-link" href="about.html"
+         aria-label="About Cultural Borders" title="About Cultural Borders">About</a>
+      <button id="share-btn" class="title-card__share-btn"
+              aria-label="Share this map" title="Share">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 2v9M5 5l3-3 3 3"/>
+          <path d="M4 10v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <!-- ================================================
-       TOOLTIP (desktop hover)
-       ================================================ -->
+  <!-- TOOLTIP (desktop hover) -->
   <div id="tooltip" class="tooltip is-hidden" role="tooltip" aria-hidden="true">
     <div class="tooltip__territory"></div>
     <div class="tooltip__row">
@@ -74,10 +71,8 @@
     </div>
   </div>
 
-  <!-- ================================================
-       LEGEND (collapsible)
-       ================================================ -->
-  <div id="legend" class="legend" aria-label="Artist color legend" hidden>
+  <!-- LEGEND (desktop, collapsible) -->
+  <div id="legend" class="legend" aria-label="Color legend" hidden>
     <button id="legend-btn" class="legend__btn" aria-expanded="false" aria-controls="legend-body">
       <svg class="legend__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <circle cx="6" cy="6" r="3"/><circle cx="14" cy="6" r="3"/>
@@ -89,18 +84,14 @@
       </svg>
     </button>
     <div id="legend-body" class="legend__body" hidden>
-      <p class="legend__heading">Top artists by territory</p>
+      <p class="legend__heading">Top by territory</p>
       <ul id="legend-list" class="legend__list" role="list"></ul>
     </div>
   </div>
 
-  <!-- ================================================
-       INFO PANEL / BOTTOM SHEET
-       ================================================ -->
-  <aside id="panel" class="panel panel--closed" aria-label="Location music charts" aria-hidden="true">
-    <!-- Mobile drag handle -->
+  <!-- INFO PANEL / BOTTOM SHEET -->
+  <aside id="panel" class="panel panel--closed" aria-label="Location charts" aria-hidden="true">
     <div class="panel__handle" aria-hidden="true"></div>
-
     <header class="panel__header">
       <div class="panel__title-wrap">
         <div id="panel-territory" class="panel__territory"></div>
@@ -112,21 +103,65 @@
         </svg>
       </button>
     </header>
-
-    <div class="panel__section-label">Top Charts</div>
-
-    <div id="panel-tracks" class="panel__tracks" role="list" aria-label="Top tracks"></div>
+    <!-- Body rendered by active mode's renderPanelBody() -->
+    <div id="panel-body" class="panel__body"></div>
   </aside>
 
-  <!-- Mobile backdrop -->
+  <!-- Shared backdrop -->
   <div id="panel-overlay" class="panel-overlay is-hidden" aria-hidden="true"></div>
 
-  <!-- ================================================
-       FLOATING MINI-PLAYER
-       ================================================ -->
-  <div id="player-widget" class="player-widget" hidden aria-label="Mini music player" role="region">
+  <!-- MOBILE LEGEND SHEET -->
+  <div id="legend-sheet" class="legend-sheet" aria-label="Color legend" aria-hidden="true">
+    <div class="legend-sheet__handle" aria-hidden="true"></div>
+    <p class="legend-sheet__title">Legend</p>
+    <ul id="legend-sheet-list" class="legend__list legend-sheet__list" role="list"></ul>
+  </div>
 
-    <!-- Drag handle (desktop) / tap-to-expand prompt -->
+  <!-- MODE BAR (bottom tab navigation) -->
+  <nav id="mode-bar" class="mode-bar" aria-label="Visualisation mode">
+    <button class="mode-bar__tab is-active" data-mode="tracks" aria-label="Top Tracks">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M9 2v8.268A2 2 0 1 1 7 9V5H4V3h5z"/>
+      </svg>
+      <span class="mode-bar__label">Tracks</span>
+    </button>
+    <button class="mode-bar__tab" data-mode="artists" aria-label="Top Artists">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <circle cx="8" cy="5" r="3"/>
+        <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5"/>
+      </svg>
+      <span class="mode-bar__label">Artists</span>
+    </button>
+    <button class="mode-bar__tab" data-mode="discover" aria-label="Discover">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5"/>
+        <path d="M11 11l3 3"/>
+      </svg>
+      <span class="mode-bar__label">Discover</span>
+    </button>
+    <button class="mode-bar__tab" data-mode="languages" aria-label="Languages">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="6"/>
+        <path d="M8 2c-2 2-2 8 0 12M8 2c2 2 2 8 0 12M2 8h12"/>
+      </svg>
+      <span class="mode-bar__label">Languages</span>
+    </button>
+    <button class="mode-bar__tab" data-mode="legend" aria-label="Show legend">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <circle cx="6" cy="6" r="3"/><circle cx="14" cy="6" r="3"/>
+        <circle cx="6" cy="14" r="3"/><circle cx="14" cy="14" r="3"/>
+      </svg>
+      <span class="mode-bar__label">Legend</span>
+    </button>
+  </nav>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- FLOATING MINI-PLAYER -->
+  <div id="player-widget" class="player-widget" hidden aria-label="Mini music player" role="region">
     <div id="pw-drag-handle" class="pw-handle" aria-hidden="true">
       <span class="pw-handle__dots">
         <svg viewBox="0 0 20 6" fill="currentColor" width="20" height="6">
@@ -134,16 +169,11 @@
           <circle cx="3" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="17" cy="3" r="1.5"/>
         </svg>
       </span>
-      <!-- Animated equaliser bars — only visible when playing -->
       <span class="pw-eq" aria-hidden="true">
-        <span class="pw-eq__bar"></span>
-        <span class="pw-eq__bar"></span>
-        <span class="pw-eq__bar"></span>
-        <span class="pw-eq__bar"></span>
+        <span class="pw-eq__bar"></span><span class="pw-eq__bar"></span>
+        <span class="pw-eq__bar"></span><span class="pw-eq__bar"></span>
       </span>
     </div>
-
-    <!-- Track info header -->
     <div class="pw-header">
       <img id="pw-thumb" class="pw-thumb" alt="" hidden />
       <div class="pw-info">
@@ -154,52 +184,32 @@
         </div>
       </div>
       <div class="pw-actions">
-        <!-- Minimise / expand -->
-        <button id="pw-minimize"
-                class="pw-btn"
-                data-minimized="false"
-                aria-label="Minimise player"
-                title="Minimise">
+        <button id="pw-minimize" class="pw-btn" data-minimized="false"
+                aria-label="Minimise player" title="Minimise">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <polyline points="4 10 8 6 12 10"/>
           </svg>
         </button>
-        <!-- Open in YouTube -->
-        <a  id="pw-open-yt"
-            class="pw-btn"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open in YouTube"
-            title="Open in YouTube">
+        <a id="pw-open-yt" class="pw-btn" href="#" target="_blank" rel="noopener noreferrer"
+           aria-label="Open in YouTube" title="Open in YouTube">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3"/>
             <path d="M10 2h4m0 0v4m0-4L7 9"/>
           </svg>
         </a>
-        <!-- Close -->
-        <button id="pw-close"
-                class="pw-btn pw-btn--close"
-                aria-label="Close player"
-                title="Close player">
+        <button id="pw-close" class="pw-btn pw-btn--close" aria-label="Close player" title="Close player">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
           </svg>
         </button>
       </div>
     </div>
-
-    <!-- YouTube iframe wrapper — collapses when minimised -->
     <div id="pw-frame" class="pw-frame">
       <div id="yt-iframe"></div>
     </div>
+  </div>
 
-  </div><!-- /#player-widget -->
-
-  <!-- ================================================
-       SCRIPTS
-       ================================================ -->
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
   <script data-goatcounter="https://catbru.goatcounter.com/count"
