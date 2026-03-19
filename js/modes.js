@@ -178,7 +178,7 @@ const DISCOVER_MODE = {
 
   onSelect(rows, _meta, { playTrack }) {
     if (rows[0]) playTrack(rows[0]);
-    return false;
+    return true;  // fully handled — skip panel so player appears immediately
   },
 };
 
