@@ -21,62 +21,86 @@
     <section class="card section">
       <h1 class="section__title">What is this?</h1>
       <p>
-        Cultural Borders is an interactive map that shows what people are actually listening to
-        across different countries, regions, and cities — pulled directly from
-        <a href="https://charts.youtube.com/" target="_blank" rel="noopener noreferrer">YouTube Music Charts</a>.
-        Tap any territory on the map and you get the local top charts for that place.
-      </p>
-      <p>
-        The idea came from <a href="https://pudding.cool/2018/06/music-map" target="_blank" rel="noopener noreferrer">The Pudding's Cultural Borders piece</a>,
-        which published a one-time snapshot showing where the world's musical tastes diverge.
-        This version is built to stay current and let you explore more than just the #1 song.
+        Cultural Borders is an interactive map showing what people are actually listening to
+        across different countries, regions, and cities. The data comes directly from
+        <a href="https://charts.youtube.com/" target="_blank" rel="noopener noreferrer">YouTube Music Charts</a>,
+        which publishes real-time top 20 charts for around 4,700 locations worldwide.
+        Tap any territory on the map to see the local charts for that place.
       </p>
     </section>
 
     <section class="card section">
-      <h1 class="section__title">What can you explore?</h1>
-      <p>The map has four modes, switchable from the bar at the bottom:</p>
+      <h1 class="section__title">Modes</h1>
+      <p>Switch between views using the bar at the bottom of the map.</p>
       <ul class="mode-list">
         <li>
-          <span class="mode-name">Tracks</span>
+          <span class="mode-name">
+            <svg class="mode-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M9 2v8.268A2 2 0 1 1 7 9V5H4V3h5z"/>
+            </svg>
+            Tracks
+          </span>
           Map coloured by the #1 song in each territory. Tap to see the full local top 20.
         </li>
         <li>
-          <span class="mode-name">Artists</span>
-          Same idea but for artists — who dominates each place.
+          <span class="mode-name">
+            <svg class="mode-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <circle cx="8" cy="5" r="3"/>
+              <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5"/>
+            </svg>
+            Artists
+          </span>
+          Same idea but for artists — which artist dominates each territory.
         </li>
         <li>
-          <span class="mode-name">Discover</span>
+          <span class="mode-name">
+            <svg class="mode-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="8" cy="8" r="6"/>
+              <path d="M8 4.5L9.2 8H6.8z" fill="currentColor" stroke="none"/>
+              <path d="M8 11.5L6.8 8H9.2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>
+              <circle cx="8" cy="8" r="1.1" fill="#09090f" stroke="none"/>
+            </svg>
+            Discover
+          </span>
           One song per territory picked for being locally unique — something that barely charts
-          anywhere else in the world. Tap a country and it plays immediately.
+          anywhere else. Tap a country and it plays immediately.
         </li>
         <li>
-          <span class="mode-name">Languages</span>
+          <span class="mode-name">
+            <svg class="mode-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="8" cy="8" r="6"/>
+              <path d="M8 2c-2 2-2 8 0 12M8 2c2 2 2 8 0 12M2 8h12"/>
+            </svg>
+            Languages
+          </span>
           Map coloured by the dominant language in each territory's top 20. Tap to see the
-          full language breakdown with percentages.
+          full breakdown with percentages.
         </li>
       </ul>
     </section>
 
     <section class="card section">
-      <h1 class="section__title">Where does the data come from?</h1>
+      <h1 class="section__title">Colours</h1>
       <p>
-        YouTube Music exposes chart data for around 4,700 locations worldwide — countries,
-        regions, and cities. A Python script queries those charts in parallel and stores
-        the top 20 tracks and artists per location.
+        Each territory is coloured by whatever is #1 there. Territories that share the same
+        #1 entry share the same colour, so you can see at a glance where tastes converge.
+        The legend (top-left corner on desktop) lists the most widespread entries.
       </p>
       <p>
-        The map geometry comes from <a href="https://nominatim.org/" target="_blank" rel="noopener noreferrer">OpenStreetMap via Nominatim</a>.
-        Each territory's polygon is flattened so higher-detail areas (cities, regions)
-        punch holes into country-level shapes, giving a seamless non-overlapping globe.
+        In Languages mode the colour reflects the majority language across the full top 20,
+        not just the #1 song.
       </p>
     </section>
 
     <section class="card section section--credits">
-      <h1 class="section__title">Who made it?</h1>
+      <h1 class="section__title">Credits</h1>
       <p>
-        Personal project by <a href="https://rogersanjaume.cat" target="_blank" rel="noopener noreferrer">Roger Sanjaume</a>.
-        Data last updated March 2026.
+        A personal project by <a href="https://rogersanjaume.cat" target="_blank" rel="noopener noreferrer">Roger Sanjaume</a>,
+        inspired by <a href="https://pudding.cool/2018/06/music-map" target="_blank" rel="noopener noreferrer">The Pudding's Cultural Borders</a>.
+        Open source —
+        <a href="https://github.com/catbru/cultural-borders-yt-charts-web" target="_blank" rel="noopener noreferrer">view on GitHub</a>.
       </p>
     </section>
 

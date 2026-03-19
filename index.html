@@ -136,9 +136,12 @@
     </button>
     <button class="mode-bar__tab is-active" data-mode="discover" aria-label="Discover">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
-           stroke-linecap="round" aria-hidden="true">
-        <circle cx="7" cy="7" r="4.5"/>
-        <path d="M11 11l3 3"/>
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="6"/>
+        <!-- compass needle: north tip filled, south tip faint -->
+        <path d="M8 4.5L9.2 8H6.8z" fill="currentColor" stroke="none"/>
+        <path d="M8 11.5L6.8 8H9.2z" fill="currentColor" fill-opacity="0.3" stroke="none"/>
+        <circle cx="8" cy="8" r="1.1" fill="var(--clr-bg)" stroke="none"/>
       </svg>
       <span class="mode-bar__label">Discover</span>
     </button>

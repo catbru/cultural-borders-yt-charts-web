@@ -941,7 +941,7 @@ a { color: inherit; }
   flex-direction: column;
 
   /* Default position: bottom-right, above mode bar on mobile */
-  bottom: calc(3.5rem + 56px);
+  bottom: calc(3.5rem + 86px);
   right: 1rem;
   width: 320px;
 
@@ -981,7 +981,7 @@ a { color: inherit; }
 /* ── Mobile: full-width bar above mode bar ───────────────── */
 @media (max-width: 767px) {
   .player-widget {
-    bottom: 56px; /* sits on top of the mode bar */
+    bottom: 86px; /* sits above the floating pill bar */
     right: 0;
     left: 0;
     width: 100%;
@@ -1194,35 +1194,32 @@ a { color: inherit; }
 
 .mode-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
+  bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100vw - 24px));
+  height: 62px;
   display: flex;
   align-items: stretch;
-  background: color-mix(in srgb, var(--clr-surface) 92%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid var(--clr-border);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--clr-surface) 95%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--clr-border-strong);
+  border-radius: 31px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  padding: 5px;
   z-index: var(--z-ui);
 }
 
 @media (min-width: 768px) {
   .mode-bar {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
     width: 420px;
+    height: 52px;
     bottom: 24px;
-    height: 48px;
     border-radius: 28px;
-    border: 1px solid var(--clr-border);
     box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    padding-bottom: 0;
+    padding: 4px;
   }
-  /* Hide legend tab on desktop — it has the floating overlay */
-  .mode-bar__tab[data-mode="legend"] { display: none; }
 }
 
 .mode-bar__tab {
@@ -1231,33 +1228,26 @@ a { color: inherit; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   color: var(--clr-text-muted);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   border: none;
   background: none;
   cursor: pointer;
   position: relative;
-  transition: color var(--dur-fade);
-  padding: 6px 2px;
+  border-radius: 24px;
+  padding: 6px 4px;
+  transition: color var(--dur-fade), background var(--dur-fade);
   -webkit-tap-highlight-color: transparent;
 }
 
-.mode-bar__tab svg { width: 18px; height: 18px; flex-shrink: 0; }
+.mode-bar__tab svg { width: 20px; height: 20px; flex-shrink: 0; }
 
-.mode-bar__tab.is-active { color: var(--clr-accent); }
-
-.mode-bar__tab.is-active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: var(--clr-accent);
-  border-radius: 0 0 2px 2px;
+.mode-bar__tab.is-active {
+  color: var(--clr-accent);
+  background: rgba(107,107,255,0.13);
 }
 
 /* Loading badge — pulsing dot while CSV loads */
@@ -1265,7 +1255,7 @@ a { color: inherit; }
   content: '';
   position: absolute;
   top: 5px;
-  right: calc(50% - 12px);
+  right: calc(50% - 14px);
   width: 6px;
   height: 6px;
   background: var(--clr-accent);
@@ -1404,7 +1394,7 @@ a { color: inherit; }
 
 .legend-sheet {
   position: fixed;
-  bottom: 56px; /* above mode bar */
+  bottom: 86px; /* above floating pill bar (12px + 62px + 12px gap) */
   left: 0;
   right: 0;
   max-height: 55vh;
@@ -1440,9 +1430,10 @@ a { color: inherit; }
 
 .legend-sheet__list { padding-bottom: 0.5rem; }
 
-/* Hide desktop legend on mobile */
+/* Hide legend entirely on mobile */
 @media (max-width: 767px) {
   #legend { display: none; }
+  #legend-sheet { display: none; }
 }
 
 /* ============================================================
@@ -1451,7 +1442,7 @@ a { color: inherit; }
 
 .toast {
   position: fixed;
-  bottom: 72px;
+  bottom: 96px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--clr-surface-2);
@@ -1475,9 +1466,9 @@ a { color: inherit; }
    ============================================================ */
 
 .legend-toggle-btn {
-  display: none; /* hidden on desktop */
+  display: none; /* desktop-only; hidden everywhere by default */
   position: fixed;
-  bottom: 68px; /* above mode bar (56px) + 12px gap */
+  bottom: 86px; /* alongside pill bar (12px bottom + 62px height + 12px gap) */
   right: 12px;
   width: 36px;
   height: 36px;
@@ -1500,6 +1491,4 @@ a { color: inherit; }
   border-color: var(--clr-accent);
 }
 
-@media (max-width: 767px) {
-  .legend-toggle-btn { display: flex; }
-}
+/* legend-toggle-btn hidden on mobile (legend removed there) */
